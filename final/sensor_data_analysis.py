@@ -10,13 +10,13 @@ from sklearn.linear_model import Ridge
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import AdaBoostRegressor
 
-df_metadata = pd.read_csv('ebu3b/data/ebu3b_metadata.csv')
+df_metadata = pd.read_csv('../ebu3b/data/ebu3b_metadata.csv')
 
 # Columns required from weather data
 req_columns = ['dt_iso', 'temp', 'temp_min', 'temp_max', 'pressure', 'humidity',
                'wind_speed', 'wind_deg', 'clouds_all', 'weather_id', 'weather_main']
 # Read the weather data frame
-weather_df = pd.read_csv('ebu3b/weather.csv')[req_columns]
+weather_df = pd.read_csv('../ebu3b/weather.csv')[req_columns]
 
 # Remove UTC and convert to datetime
 weather_df['dt_iso'] = pd.to_datetime(weather_df.dt_iso.str.replace(" UTC", ""))
@@ -44,7 +44,7 @@ def get_df_metadata():
 def get_df_weather():
     return weather_df
 
-data_path = "./ebu3b/data/"
+data_path = "../ebu3b/data/"
 def get_signal_dataframe(room, signals = None, hour_mean=True):
     df_list = []
     df_filtered = df_metadata[(df_metadata.Location == room)]
@@ -81,7 +81,9 @@ def get_signal_dataframe(room, signals = None, hour_mean=True):
         "value", "identifier", "location", "Ground Truth Point Type"]]
     rm_signals = df_all.pivot_table(values='value', index=['time', 'location'], \
                                                   columns="Ground Truth Point Type").reset_index()
-    return weather_df.merge(rm_signals, left_on='dt_iso', right_on='time')
+    if hour_mean:
+        rm_signals = weather_df.merge(rm_signals, left_on='dt_iso', right_on='time')
+    return rm_signals
 
 def model_for_day(model_df, features, target, day='Sunday'):
     model_df = model_df.dropna()
