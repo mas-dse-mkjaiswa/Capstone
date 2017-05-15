@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[28]:
 
 import pandas as pd
 import numpy as np
@@ -15,11 +15,12 @@ from sklearn.linear_model import Ridge
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import AdaBoostRegressor
 from sklearn.feature_selection import VarianceThreshold
+from sklearn.decomposition import PCA
 
 
 # ### Read the metadata
 
-# In[2]:
+# In[17]:
 
 df_metadata = pd.read_csv('../ebu3b/data/ebu3b_metadata.csv')
 
@@ -58,7 +59,7 @@ def get_df_metadata():
 
 # ### Read the weather data
 
-# In[3]:
+# In[18]:
 
 # Columns required from weather data
 req_columns = ['dt_iso', 'temp', 'temp_min', 'temp_max', 'pressure', 'humidity',
@@ -97,7 +98,7 @@ def get_df_weather():
 # - If mean_type is quarter_hout it groups by every 15 minutes
 # - If weather is True it combines with weather data or returns the raw data frame.
 
-# In[4]:
+# In[19]:
 
 data_path = "../ebu3b/data/"
 
@@ -157,7 +158,7 @@ def get_signal_dataframe(room, signals = None, mean_type="hour", use_weather_dat
 # - Takes input the data frame and the day for which model must be running
 # - It runs the linear regression, Lasso, Ridge, DecisionTreeRegressor, AdaBoostRegressor on the data
 
-# In[5]:
+# In[20]:
 
 def model_for_day(model_df, features, target, day='Sunday'):
     model_df = model_df.dropna()
@@ -194,14 +195,14 @@ def model_for_day(model_df, features, target, day='Sunday'):
 # 
 # - plotResults is the utility function that will plot the compressed and reconstructed data.
 
-# In[6]:
+# In[21]:
 
 def getTime(x, dfTest):
     return dfTest.at[int(x),'timeseries']
 
-def plotResults(dfs, plotTemplates):
-    fig, ax = plt.subplots(figsize=(15, 8))
-    ax.set_title('compression analysis')
+def plotResults(dfs, plotTemplates, method):
+    fig, ax = plt.subplots(figsize=(15, 6))
+    ax.set_title('compression analysis for ' + method)
     linestyles = ['_', '-', '--', ':']
     colors = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
     timeX=dfs[0]['timeseries'].tolist()
@@ -250,7 +251,7 @@ def plotResults(dfs, plotTemplates):
 # 3. **recon()** will reconstruct the compressed data.
 # 4. **compute_error()** will compute the error.
 
-# In[7]:
+# In[22]:
 
 class encoder:
     """
@@ -320,7 +321,7 @@ class encoder:
 # 
 # - Creates an array of {time, value} values based on the current and previous value.
 
-# In[8]:
+# In[23]:
 
 class piecewise_constant(encoder):
     """Represent the signal using a sequence of piecewise constant functions 
@@ -437,7 +438,7 @@ class piecewise_constant(encoder):
 # 
 # - Iteratively stores the time and values for every changing slope
 
-# In[9]:
+# In[24]:
 
 class piecewise_linear(encoder):
     """ 
@@ -557,7 +558,7 @@ class piecewise_linear(encoder):
 # 4. Calculate the compression error.
 # 5. Returns the compressed and reconstructed data frames.
 
-# In[10]:
+# In[25]:
 
 def model(pd_df, method, tolerance):
     """model calls either piecewise_constant or piecewise_linear based on the method.
@@ -604,7 +605,7 @@ def model(pd_df, method, tolerance):
 # 4. Call the model on the data.
 # 5. Returns the compressed and reconstructed data frames.
 
-# In[14]:
+# In[26]:
 
 def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperature'], method='piecewise_linear'):
     """runAnalysis is the API that performs piecewise linear / piecewise constant analysis on a given teamplate."""
@@ -647,7 +648,38 @@ def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperatu
     return [dfs, plotTemplates]
 
 
-# In[ ]:
+# ### API: CompressWithPCA
+# 
+# **CompressWithPCA is the API that performs PCA on the data frame and plots the original and reconstructed for template.**
+# 
+# 1. Takes the data frame as input
+# 2. Performs PCA, transforms and reconstructs the data frame with the number of components specified
+# 3. filters the data frame based on date range
+# 4. selects the required template from original and reconstructed
+# 5. returns the data frames
 
+# In[27]:
 
+def CompressWithPCA(dataDF, stTime, enTime, template='Zone Temperature', n_components = 9):
+    # Fill the nan values with its previous values
+    dataDF.fillna(method='bfill', inplace = True)
+
+    # Remove first 2 columns. first 2 colunms are date and location.
+    original_df = dataDF.iloc[:, 2:]
+
+    pca = PCA(n_components = n_components).fit(original_df)
+    transformed = pca.transform(original_df)
+    reconstructed = pca.inverse_transform(transformed)
+    reconstructed_df = pd.concat([dataDF.iloc[:,0:2], pd.DataFrame(reconstructed, columns=dataDF.columns[2:])], axis=1)
+    
+    if not stTime is None:
+        stTime = pd.to_datetime(stTime)
+        dataDF = dataDF[(dataDF.time >= stTime)]
+    if not enTime is None:
+        enTime = pd.to_datetime(enTime)
+        dataDF = dataDF[(dataDF.time <= enTime)]
+    
+    df_orig = dataDF.rename(columns={'time':'timeseries', template:'values'})
+    df_reconstruct = reconstructed_df[(reconstructed_df.time >= stTime) & (reconstructed_df.time <= enTime)][template]
+    return [[df_orig, df_reconstruct], [template]]
 
