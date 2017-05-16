@@ -613,6 +613,7 @@ def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperatu
     # Initialize the data frames and templates to plot.
     dfs = []
     plotTemplates=[]
+    dfs_compressed = []
     
     # Run the analysis for each template upto the template count.
     for t in templates:
@@ -641,11 +642,12 @@ def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperatu
             # Append the template and output data frames of model.
             plotTemplates.append(t)
             dfs.extend([dataDF, reconDF])
+            dfs_compressed.append(compressedDF)
         except:
             print "Exception for template: ", t
 
     # Return the templates and dataframes.
-    return [dfs, plotTemplates]
+    return [dfs, plotTemplates, dfs_compressed]
 
 
 # ### API: CompressWithPCA
@@ -681,5 +683,5 @@ def CompressWithPCA(dataDF, stTime, enTime, template='Zone Temperature', n_compo
     
     df_orig = dataDF.rename(columns={'time':'timeseries', template:'values'})
     df_reconstruct = reconstructed_df[(reconstructed_df.time >= stTime) & (reconstructed_df.time <= enTime)][template]
-    return [[df_orig, df_reconstruct], [template]]
+    return [[df_orig, df_reconstruct], [template], [transformed]]
 
