@@ -195,13 +195,14 @@ def model_for_day(model_df, features, target, day='Sunday'):
 # 
 # - plotResults is the utility function that will plot the compressed and reconstructed data.
 
-# In[21]:
+# In[30]:
 
 def getTime(x, dfTest):
     return dfTest.at[int(x),'timeseries']
 
-def plotResults(dfs, plotTemplates, method):
-    fig, ax = plt.subplots(figsize=(15, 6))
+def plotResults(dfs, plotTemplates, method, ax=None):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(15, 6))
     ax.set_title('compression analysis for ' + method)
     linestyles = ['_', '-', '--', ':']
     colors = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
@@ -459,7 +460,7 @@ class piecewise_linear(encoder):
     # Not quite a snapshot because the value will not necessarily change after 
     # max_gap is reached.
     def fit(self, S, max_gap):
-        print "Fitting piecewise_constant"
+        print "Fitting piecewise_linear"
         # Replace the nan values with 0
         S.fillna(0)
         
@@ -605,7 +606,7 @@ def model(pd_df, method, tolerance):
 # 4. Call the model on the data.
 # 5. Returns the compressed and reconstructed data frames.
 
-# In[26]:
+# In[29]:
 
 def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperature'], method='piecewise_linear'):
     """runAnalysis is the API that performs piecewise linear / piecewise constant analysis on a given teamplate."""
@@ -619,7 +620,11 @@ def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperatu
     for t in templates:
         try:
             # get the signal dataframe for specified room and signals
-            dataDF = get_signal_dataframe(room, [t], mean_type=None, use_weather_data=False)
+            if type(room) is pd.core.frame.DataFrame:
+                dataDF = room
+            elif type(room) is str:
+                dataDF = get_signal_dataframe(room, [t], mean_type=None, use_weather_data=False)
+
             if not stTime is None:
                 stTime = pd.to_datetime(stTime)
                 dataDF = dataDF[dataDF.time >= stTime]
@@ -673,7 +678,7 @@ def CompressWithPCA(dataDF, stTime, enTime, template='Zone Temperature', n_compo
     transformed = pca.transform(original_df)
     reconstructed = pca.inverse_transform(transformed)
     reconstructed_df = pd.concat([dataDF.iloc[:,0:2], pd.DataFrame(reconstructed, columns=dataDF.columns[2:])], axis=1)
-    
+
     if not stTime is None:
         stTime = pd.to_datetime(stTime)
         dataDF = dataDF[(dataDF.time >= stTime)]
