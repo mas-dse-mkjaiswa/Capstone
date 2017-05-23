@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[28]:
+# In[1]:
 
 import pandas as pd
 import numpy as np
@@ -20,7 +20,7 @@ from sklearn.decomposition import PCA
 
 # ### Read the metadata
 
-# In[17]:
+# In[2]:
 
 df_metadata = pd.read_csv('../ebu3b/data/ebu3b_metadata.csv')
 
@@ -59,7 +59,7 @@ def get_df_metadata():
 
 # ### Read the weather data
 
-# In[18]:
+# In[3]:
 
 # Columns required from weather data
 req_columns = ['dt_iso', 'temp', 'temp_min', 'temp_max', 'pressure', 'humidity',
@@ -98,7 +98,7 @@ def get_df_weather():
 # - If mean_type is quarter_hout it groups by every 15 minutes
 # - If weather is True it combines with weather data or returns the raw data frame.
 
-# In[19]:
+# In[4]:
 
 data_path = "../ebu3b/data/"
 
@@ -126,6 +126,8 @@ def get_signal_dataframe(room, signals = None, mean_type="hour", use_weather_dat
             bucket_size = 60
         elif mean_type == "quarter_hour":
             bucket_size = 15
+        elif mean_type == '5minutes':
+            bucket_size = 5
 
         if not mean_type is None:
             hours = df.time.dt.hour.astype("str") + " hours"
@@ -158,7 +160,7 @@ def get_signal_dataframe(room, signals = None, mean_type="hour", use_weather_dat
 # - Takes input the data frame and the day for which model must be running
 # - It runs the linear regression, Lasso, Ridge, DecisionTreeRegressor, AdaBoostRegressor on the data
 
-# In[20]:
+# In[5]:
 
 def model_for_day(model_df, features, target, day='Sunday'):
     model_df = model_df.dropna()
@@ -195,7 +197,7 @@ def model_for_day(model_df, features, target, day='Sunday'):
 # 
 # - plotResults is the utility function that will plot the compressed and reconstructed data.
 
-# In[30]:
+# In[36]:
 
 def getTime(x, dfTest):
     return dfTest.at[int(x),'timeseries']
@@ -252,7 +254,7 @@ def plotResults(dfs, plotTemplates, method, ax=None):
 # 3. **recon()** will reconstruct the compressed data.
 # 4. **compute_error()** will compute the error.
 
-# In[22]:
+# In[7]:
 
 class encoder:
     """
@@ -322,7 +324,7 @@ class encoder:
 # 
 # - Creates an array of {time, value} values based on the current and previous value.
 
-# In[23]:
+# In[8]:
 
 class piecewise_constant(encoder):
     """Represent the signal using a sequence of piecewise constant functions 
@@ -439,7 +441,7 @@ class piecewise_constant(encoder):
 # 
 # - Iteratively stores the time and values for every changing slope
 
-# In[24]:
+# In[9]:
 
 class piecewise_linear(encoder):
     """ 
@@ -559,7 +561,7 @@ class piecewise_linear(encoder):
 # 4. Calculate the compression error.
 # 5. Returns the compressed and reconstructed data frames.
 
-# In[25]:
+# In[11]:
 
 def model(pd_df, method, tolerance):
     """model calls either piecewise_constant or piecewise_linear based on the method.
@@ -606,7 +608,7 @@ def model(pd_df, method, tolerance):
 # 4. Call the model on the data.
 # 5. Returns the compressed and reconstructed data frames.
 
-# In[29]:
+# In[12]:
 
 def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperature'], method='piecewise_linear'):
     """runAnalysis is the API that performs piecewise linear / piecewise constant analysis on a given teamplate."""
@@ -665,7 +667,7 @@ def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperatu
 # 4. selects the required template from original and reconstructed
 # 5. returns the data frames
 
-# In[27]:
+# In[13]:
 
 def CompressWithPCA(dataDF, stTime, enTime, template='Zone Temperature', n_components = 9):
     # Fill the nan values with its previous values
@@ -689,4 +691,76 @@ def CompressWithPCA(dataDF, stTime, enTime, template='Zone Temperature', n_compo
     df_orig = dataDF.rename(columns={'time':'timeseries', template:'values'})
     df_reconstruct = reconstructed_df[(reconstructed_df.time >= stTime) & (reconstructed_df.time <= enTime)][template]
     return [[df_orig, df_reconstruct], [template], [transformed]]
+
+
+# ### API: run_length_encoding
+# 
+# **run_length_encoding is the API that performs run length encoding on the signals specified.**
+# 
+# 1. Inputs: room / dataframe, signals to compress, stTime, enTime, tolerance, plot template
+# 2. Performs run length encoding on the signals
+# 3. filters the data frame based on date range
+# 4. returns the original, compressed and reconstructed dataframes, data frames.
+
+# In[42]:
+
+def same_bucket(se1, se2, tolerance):
+    mask = (se1 - se2).abs() > tolerance
+    val = False if mask.sum() else True
+    return val
+
+def run_length_encoding(room, signals = None, stTime = None, enTime = None, tolerance = None, template='Zone Temperature'):
+    
+    # get the signal dataframe for specified room and signals
+    if type(room) is pd.core.frame.DataFrame:
+        dataDF = room
+    elif type(room) is str:
+        dataDF = get_signal_dataframe(room, signals, mean_type=None, use_weather_data=False)
+
+    # filter the data for the required time
+    if not stTime is None:
+        stTime = pd.to_datetime(stTime)
+        dataDF = dataDF[dataDF.time >= stTime]
+    if not enTime is None:
+        enTime = pd.to_datetime(enTime)
+        dataDF = dataDF[dataDF.time <= enTime]
+
+    # rename the index in sequence
+    dataDF.index = range(len(dataDF))
+
+    # calculate the tolerance
+    if tolerance is None:
+        tolerance = [pd.to_timedelta("15 minutes")] + [0] * (len(dataDF.columns) - 1)
+
+    # initial reference is the first row
+    count, num_rows = 1, len(dataDF)
+    reference1, reference2 = dataDF.iloc[0, :].copy(), dataDF.iloc[0, :].copy()
+    
+    # initialize the empry compresed data frame
+    compressed_df = pd.DataFrame(columns=dataDF.columns.tolist() + ["count"])
+    
+    # run the loop for every row
+    for i in range(1, num_rows):
+        se = dataDF.iloc[i, :]
+        if not same_bucket(reference2, se, tolerance):
+            reference1['count'] = count
+            compressed_df = compressed_df.append(reference1)
+            reference1, reference2 = se.copy(), se.copy()
+            count = 1
+        else:
+            count += 1
+            reference2['time'] = se['time']
+    reference1['count'] = count
+    compressed_df = compressed_df.append(reference1)
+
+    recon_df = pd.DataFrame(dataDF.time)
+    recon_df = recon_df.merge(compressed_df, how='left').fillna(method='ffill')
+
+    df_orig = dataDF.rename(columns={'time':'timeseries', template:'values'})
+    return [[df_orig, recon_df[template]], [template], [compressed_df]]
+
+
+# In[ ]:
+
+
 
