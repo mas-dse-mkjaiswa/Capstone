@@ -16,6 +16,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import AdaBoostRegressor
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.metrics import mean_squared_error
 
 
 # ### Read the metadata
@@ -98,13 +100,13 @@ def get_df_weather():
 # - If mean_type is quarter_hout it groups by every 15 minutes
 # - If weather is True it combines with weather data or returns the raw data frame.
 
-# In[4]:
+# In[20]:
 
 data_path = "../ebu3b/data/"
 
 # Returns the bucket time based on original minutes and bucket_size
-def get_minute_bucket(mins, bucket_size):
-    return (mins / bucket_size).astype("int") * bucket_size
+def get_bucket(min_hour, bucket_size):
+    return (min_hour / bucket_size).astype("int") * bucket_size
 
 def get_signal_dataframe(room, signals = None, mean_type="hour", use_weather_data=True):
     df_list = []
@@ -122,20 +124,33 @@ def get_signal_dataframe(room, signals = None, mean_type="hour", use_weather_dat
         # Convert to datetime object
         df["time"] = pd.to_datetime(df.time)
 
+        min_bucket_size = None
         if mean_type == "hour":
-            bucket_size = 60
+            min_bucket_size = 60
         elif mean_type == "quarter_hour":
-            bucket_size = 15
+            min_bucket_size = 15
         elif mean_type == '5minutes':
-            bucket_size = 5
+            min_bucket_size = 5
 
-        if not mean_type is None:
+        hour_bucket_size = None
+        if mean_type == 'day':
+            hour_bucket_size = 24
+        elif mean_type == 'quarter_day':
+            hour_bucket_size = 6
+
+        if not min_bucket_size is None:
             hours = df.time.dt.hour.astype("str") + " hours"
-            mins = get_minute_bucket(df.time.dt.minute, bucket_size).astype("str") + " minutes"
+            mins = get_bucket(df.time.dt.minute, min_bucket_size).astype("str") + " minutes"
             # Groupby hour and average the values per hour. This is to reduce the number of data points.
             groupby_item = pd.to_datetime(df.time.dt.date) + pd.to_timedelta(hours + " " + mins)
-            df = df.groupby(groupby_item)[['value']].mean().reset_index()
 
+        if not hour_bucket_size is None:
+            hours = get_bucket(df.time.dt.hour, hour_bucket_size).astype("str") + " hours"
+            # Groupby hour and average the values per hour. This is to reduce the number of data points.
+            groupby_item = pd.to_datetime(df.time.dt.date) + pd.to_timedelta(hours)
+        
+        if not mean_type is None:
+            df = df.groupby(groupby_item)[['value']].mean().reset_index()
         # Create new colunms
         df["identifier"], df['location'] = identifier, room
 
@@ -197,7 +212,7 @@ def model_for_day(model_df, features, target, day='Sunday'):
 # 
 # - plotResults is the utility function that will plot the compressed and reconstructed data.
 
-# In[36]:
+# In[6]:
 
 def getTime(x, dfTest):
     return dfTest.at[int(x),'timeseries']
@@ -561,7 +576,7 @@ class piecewise_linear(encoder):
 # 4. Calculate the compression error.
 # 5. Returns the compressed and reconstructed data frames.
 
-# In[11]:
+# In[10]:
 
 def model(pd_df, method, tolerance):
     """model calls either piecewise_constant or piecewise_linear based on the method.
@@ -608,7 +623,7 @@ def model(pd_df, method, tolerance):
 # 4. Call the model on the data.
 # 5. Returns the compressed and reconstructed data frames.
 
-# In[12]:
+# In[11]:
 
 def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperature'], method='piecewise_linear'):
     """runAnalysis is the API that performs piecewise linear / piecewise constant analysis on a given teamplate."""
@@ -667,7 +682,7 @@ def runAnalysis(room, stTime = None, enTime = None, templates = ['Zone Temperatu
 # 4. selects the required template from original and reconstructed
 # 5. returns the data frames
 
-# In[13]:
+# In[12]:
 
 def CompressWithPCA(dataDF, stTime, enTime, template='Zone Temperature', n_components = 9):
     # Fill the nan values with its previous values
@@ -702,7 +717,7 @@ def CompressWithPCA(dataDF, stTime, enTime, template='Zone Temperature', n_compo
 # 3. filters the data frame based on date range
 # 4. returns the original, compressed and reconstructed dataframes, data frames.
 
-# In[42]:
+# In[13]:
 
 def same_bucket(se1, se2, tolerance):
     mask = (se1 - se2).abs() > tolerance
@@ -758,6 +773,39 @@ def run_length_encoding(room, signals = None, stTime = None, enTime = None, tole
 
     df_orig = dataDF.rename(columns={'time':'timeseries', template:'values'})
     return [[df_orig, recon_df[template]], [template], [compressed_df]]
+
+
+# ## K Mean Clustering on the Room Data
+# 
+# **What**
+# - Perform KMeans on the data to group them into various clusters.
+# 
+# **Why**
+# - Compression using PCA on clusters is lot better then the whole data.
+# 
+# **Procedure**
+# 1. Define kmeans to provide the cluster and its centers
+# 2. Calculate RMS Error based on the Predictions and evaluate the clustering Effectiveness
+# 3. Evaluate the right k value plotting the RMS error on a elbow curve
+# 4. Based on the elbow curve below, k = 4 is the most ideal
+# 5. Now using k=4 Run the k means cluster again and determine the cluster each row in the dataframe belongs to
+# 6. Using Each Cluster , now run them through PCA for 1 of the signals "Zone Temperature" to understand the patterns on each cluster
+
+# In[14]:
+
+def performKmeans(n_clusters, dataDF):
+    # Initialize the kmeans
+    kmeans = KMeans(n_clusters=n_clusters)
+
+    # classify the data in to clusters
+    predicted = kmeans.fit_predict(dataDF)
+    
+    return predicted, kmeans.cluster_centers_
+
+def calculateRMSE(original_df, labels, centers):
+    labels_df = pd.DataFrame(labels, columns=['cluster'])
+    clustered_df = labels_df.merge(pd.DataFrame(centers), left_on='cluster', right_index=True, how='left')
+    return mean_squared_error(original_df, clustered_df.iloc[:, 1:])   
 
 
 # In[ ]:
