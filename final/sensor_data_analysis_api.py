@@ -18,6 +18,7 @@ from sklearn.feature_selection import VarianceThreshold
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.metrics import mean_squared_error
+from sklearn.cross_validation import  cross_val_score
 
 
 # ### Read the metadata
@@ -100,7 +101,7 @@ def get_df_weather():
 # - If mean_type is quarter_hout it groups by every 15 minutes
 # - If weather is True it combines with weather data or returns the raw data frame.
 
-# In[20]:
+# In[4]:
 
 data_path = "../ebu3b/data/"
 
@@ -175,7 +176,7 @@ def get_signal_dataframe(room, signals = None, mean_type="hour", use_weather_dat
 # - Takes input the data frame and the day for which model must be running
 # - It runs the linear regression, Lasso, Ridge, DecisionTreeRegressor, AdaBoostRegressor on the data
 
-# In[5]:
+# In[16]:
 
 def model_for_day(model_df, features, target, day='Sunday'):
     model_df = model_df.dropna()
@@ -186,24 +187,34 @@ def model_for_day(model_df, features, target, day='Sunday'):
 
     list_df = []
     reg = DecisionTreeRegressor().fit(X_train, y_train)
-    list_df.append(pd.DataFrame({'model' : 'DecisionTreeRegressor', 'train score' : reg.score(X_train, y_train),
-                  'test score' : reg.score(X_test, y_test)}, index=[0]))
+    cv_scorestrain = cross_val_score(reg, X_train, y_train, cv=10)
+    cv_scorestest = cross_val_score(reg, X_test, y_test, cv=10)
+    list_df.append(pd.DataFrame({'model' : 'DecisionTreeRegressor', 'train score' : cv_scorestrain.mean(),
+                  'test score' : cv_scorestest.mean()}, index=[0]))
 
     reg = LinearRegression().fit(X_train, y_train)
-    list_df.append(pd.DataFrame({'model' : 'LinearRegression', 'train score' : reg.score(X_train, y_train),
-                  'test score' : reg.score(X_test, y_test)}, index=[0]))
+    cv_scorestrain = cross_val_score(reg, X_train, y_train, cv=10)
+    cv_scorestest = cross_val_score(reg, X_test, y_test, cv=10)
+    list_df.append(pd.DataFrame({'model' : 'LinearRegression', 'train score' : cv_scorestrain.max(),
+                  'test score' : cv_scorestest.mean()}, index=[0]))
 
     reg = Lasso().fit(X_train, y_train)
-    list_df.append(pd.DataFrame({'model' : 'Lasso', 'train score' : reg.score(X_train, y_train),
-                  'test score' : reg.score(X_test, y_test)}, index=[0]))
+    cv_scorestrain = cross_val_score(reg, X_train, y_train, cv=10)
+    cv_scorestest = cross_val_score(reg, X_test, y_test, cv=10)
+    list_df.append(pd.DataFrame({'model' : 'Lasso', 'train score' : cv_scorestrain.mean(),
+                  'test score' : cv_scorestest.mean()}, index=[0]))
 
     reg = Ridge().fit(X_train, y_train)
-    list_df.append(pd.DataFrame({'model' : 'Ridge', 'train score' : reg.score(X_train, y_train),
-                  'test score' : reg.score(X_test, y_test)}, index=[0]))
+    cv_scorestrain = cross_val_score(reg, X_train, y_train, cv=10)
+    cv_scorestest = cross_val_score(reg, X_test, y_test, cv=10)
+    list_df.append(pd.DataFrame({'model' : 'Ridge', 'train score' : cv_scorestrain.mean(),
+                  'test score' : cv_scorestest.mean()}, index=[0]))
 
     reg = AdaBoostRegressor().fit(X_train, y_train)
-    list_df.append(pd.DataFrame({'model' : 'AdaBoostRegressor', 'train score' : reg.score(X_train, y_train),
-                  'test score' : reg.score(X_test, y_test)}, index=[0]))
+    cv_scorestrain = cross_val_score(reg, X_train, y_train, cv=10)
+    cv_scorestest = cross_val_score(reg, X_test, y_test, cv=10)
+    list_df.append(pd.DataFrame({'model' : 'AdaBoostRegressor', 'train score' : cv_scorestrain.mean(),
+                  'test score' : cv_scorestest.mean()}, index=[0]))
 
     return pd.concat(list_df, ignore_index=True)
 
