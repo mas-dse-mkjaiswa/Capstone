@@ -1,1 +1,214 @@
-initial
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+function update_piecewise_linear_tol(cur_tol) {
+	var rooms = document.getElementsByName('room_linear');
+	var cur_room;
+	for(var i = 0; i < rooms.length; i++){
+		if(rooms[i].checked){
+			cur_room = rooms[i].value;
+			break;
+		}
+	}
+	val = "linear_" + cur_room + "_" + cur_tol + ".png"
+	document.getElementById("tolerance_box_linear").value = cur_tol
+    document.getElementById("image_linear").src = val
+}
+
+function update_piecewise_linear_room(cur_room) {
+
+	var cur_tol = document.getElementById('tolerance_linear').value;
+
+	val = "linear_" + cur_room + "_" + cur_tol + ".png"
+    document.getElementById("image_linear").src = val
+}
+
+function update_piecewise_constant_tol(cur_tol) {
+	var rooms = document.getElementsByName('room_constant');
+	var cur_room;
+	for(var i = 0; i < rooms.length; i++){
+		if(rooms[i].checked){
+			cur_room = rooms[i].value;
+			break;
+		}
+	}
+	val = "constant_" + cur_room + "_" + cur_tol + ".png"
+	document.getElementById("tolerance_box_constant").value = cur_tol
+    document.getElementById("image_constant").src = val
+}
+
+function update_piecewise_constant_room(cur_room) {
+
+	var cur_tol = document.getElementById('tolerance_constant').value;
+
+	val = "constant_" + cur_room + "_" + cur_tol + ".png"
+    document.getElementById("image_constant").src = val
+}
+
+function update_rle_tol(cur_tol) {
+	var rooms = document.getElementsByName('room_rle');
+	var cur_room;
+	for(var i = 0; i < rooms.length; i++){
+		if(rooms[i].checked){
+			cur_room = rooms[i].value;
+			break;
+		}
+	}
+	val = "rle_" + cur_room + "_" + cur_tol + ".png"
+	document.getElementById("tolerance_box_rle").value = cur_tol
+    document.getElementById("image_rle").src = val
+}
+
+function update_rle_room(cur_room) {
+
+	var cur_tol = document.getElementById('tolerance_rle').value;
+
+	val = "rle_" + cur_room + "_" + cur_tol + ".png"
+    document.getElementById("image_rle").src = val
+}
+
+
+function update_pca_tol(cur_tol) 
+{
+	var signals = document.getElementsByName('signal_pca');
+	var cur_signal;
+	for(var i = 0; i < signals.length; i++){
+		if(signals[i].checked){
+			cur_signal = signals[i].value;
+			break;
+		}
+	}
+	val = "pca_" + cur_signal + "_"  + cur_tol + ".png"
+	document.getElementById("tolerance_box_pca").value = cur_tol
+    document.getElementById("image_pca").src = val
+}
+
+function update_pca_signal(signal)
+{
+   	var cur_tol = document.getElementById('tolerance_pca').value;
+	val = "pca_" + signal + "_"  + cur_tol + ".png"
+	document.getElementById("tolerance_box_pca").value = cur_tol
+    document.getElementById("image_pca").src = val	
+}
+</script>
+</head>
+<body>
+
+<H1>Piecewise linear analysis</H1>
+
+<table>
+	<tr>
+		<td><b>Room:</b></td>
+		<td>
+			<input type="radio" name="room_linear" onclick="update_piecewise_linear_room(this.value)" value="RM-1217"  />1217
+			<input type="radio" name="room_linear" onclick="update_piecewise_linear_room(this.value)" value="Rm-2218" />2218
+			<input type="radio" name="room_linear" onclick="update_piecewise_linear_room(this.value)" value="Rm-2221" />2221
+			<input type="radio" name="room_linear" onclick="update_piecewise_linear_room(this.value)" value="Rm-3111" />3111
+			<input type="radio" name="room_linear" onclick="update_piecewise_linear_room(this.value)" value="Rm-3122" />3122
+			<input type="radio" name="room_linear" onclick="update_piecewise_linear_room(this.value)" value="Rm-3126" />3126
+			<input type="radio" name="room_linear" onclick="update_piecewise_linear_room(this.value)" value="Rm-4226" checked />4226
+		<br></td>
+	</tr>
+	<tr>
+		<td><b>Tolerance:</b></td>
+		<td><input type="range" id="tolerance_linear" min="5" max="51" step="5" value="5" onchange=update_piecewise_linear_tol(this.value) /><br></td>
+	</tr>
+	<tr><td></td>
+		<td>
+			<input type="text" id="tolerance_box_linear" value="5" disabled />
+		</td>
+	</tr>
+</table>
+
+<img src="linear_Rm-4226_1.png" id="image_linear" width="1125" height="450" />
+
+<hr>
+
+<H1>Piecewise constant analysis</H1>
+
+<table>
+	<tr>
+		<td><b>Room:</b></td>
+		<td>
+			<input type="radio" name="room_constant" onclick="update_piecewise_constant_room(this.value)" value="RM-1217" />1217
+			<input type="radio" name="room_constant" onclick="update_piecewise_constant_room(this.value)" value="Rm-2218" />2218
+			<input type="radio" name="room_constant" onclick="update_piecewise_constant_room(this.value)" value="Rm-2221" />2221
+			<input type="radio" name="room_constant" onclick="update_piecewise_constant_room(this.value)" value="Rm-3111" />3111
+			<input type="radio" name="room_constant" onclick="update_piecewise_constant_room(this.value)" value="Rm-3122" />3122
+			<input type="radio" name="room_constant" onclick="update_piecewise_constant_room(this.value)" value="Rm-3126" />3126
+			<input type="radio" name="room_constant" onclick="update_piecewise_constant_room(this.value)" value="Rm-4226" checked />4226
+		<br></td>
+	</tr>
+	<tr>
+		<td><b>Tolerance:</b></td>
+		<td><input type="range" id="tolerance_constant" min="5" max="51" step="5" value="5" onchange=update_piecewise_constant_tol(this.value) /><br></td>
+	</tr>
+	<tr><td></td>
+		<td>
+			<input type="text" id="tolerance_box_constant" value="5" disabled />
+		</td>
+	</tr>
+</table>
+
+<img src="constant_Rm-4226_1.png" id="image_constant" width="1125" height="450" />
+
+<hr>
+
+<H1>Run length encoding</H1>
+
+<table>
+	<tr>
+		<td><b>Room:</b></td>
+		<td>
+			<input type="radio" name="room_rle" onclick="update_rle_room(this.value)" value="RM-1217" />1217
+			<input type="radio" name="room_rle" onclick="update_rle_room(this.value)" value="Rm-2218" />2218
+			<input type="radio" name="room_rle" onclick="update_rle_room(this.value)" value="Rm-2221" />2221
+			<input type="radio" name="room_rle" onclick="update_rle_room(this.value)" value="Rm-3111" />3111
+			<input type="radio" name="room_rle" onclick="update_rle_room(this.value)" value="Rm-3122" />3122
+			<input type="radio" name="room_rle" onclick="update_rle_room(this.value)" value="Rm-3126" />3126
+			<input type="radio" name="room_rle" onclick="update_rle_room(this.value)" value="Rm-4226" checked />4226
+		<br></td>
+	</tr>
+	<tr>
+		<td><b>Tolerance:</b></td>
+		<td>
+			<input type="range" id="tolerance_rle" min="0" max="5" step="1" value="0" onchange=update_rle_tol(this.value) /><br></td>
+	</tr>
+	<tr><td></td>
+		<td>
+			<input type="text" id="tolerance_box_rle" value="0" disabled />
+		</td>
+	</tr>
+</table>
+
+<img src="rle_Rm-4226_0.png" id="image_rle" width="1125" height="450" />
+
+<hr>
+
+<h1>Principal component analysis</h1>
+
+<table>
+	<tr>
+		<td><b>Signal:</b></td>
+		<td>
+			<input type="radio" name="signal_pca" onclick="update_pca_signal(this.value)" value="zt" checked />Zone Temperature
+			<input type="radio" name="signal_pca" onclick="update_pca_signal(this.value)" value="saf" />Supply airflow
+		<br></td>
+	</tr>
+	<tr>
+		<td><b>Top components:</b></td>
+		<td>
+			<input type="range" id="tolerance_pca" min="1" max="20" step="1" value="0" onchange=update_pca_tol(this.value) /><br></td>
+	</tr>
+	<tr><td></td>
+		<td>
+			<input type="text" id="tolerance_box_pca" value="1" disabled />
+		</td>
+	</tr>
+</table>
+
+<img src="pca_zt_1.png" id="image_pca" width="1125" height="450" />
+
+</body>
+</html>
